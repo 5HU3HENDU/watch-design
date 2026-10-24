@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch</title>
+<style>
+  :root {
+    --accent: #c9a227;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { min-height: 100%; }
+
+  body {
+    background: var(--page-bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+    transition: background 0.4s ease;
+  }
+
+  /* ---------- Themes ---------- */
+  body[data-theme="dark"] {
+    --page-bg: #0e0d0b;
+    --dial-bg: #171512;
+    --dial-edge: #2b2721;
+    --ink: #f2ead8;
+    --hand: #f2ead8;
+    --badge-bg: #f2ead8;
+    --badge-text: #171512;
+    --panel-bg: #1b1916;
+    --panel-border: #33302a;
+    --muted: #8d887c;
+  }
+  body[data-theme="light"] {
+    --page-bg: #f4f1ea;
+    --dial-bg: #fdfbf6;
+    --dial-edge: #d8d2c4;
+    --ink: #1c1a17;
+    --hand: #1c1a17;
+    --badge-bg: #1c1a17;
+    --badge-text: #fdfbf6;
+    --panel-bg: #fffdf8;
+    --panel-border: #ddd6c6;
+    --muted: #8a857a;
+  }
+  body[data-theme="midnight"] {
+    --page-bg: #0a1220;
+    --dial-bg: #101a2e;
+    --dial-edge: #22304a;
+    --ink: #dbe4f0;
+    --hand: #dbe4f0;
+    --badge-bg: #dbe4f0;
+    --badge-text: #101a2e;
+    --panel-bg: #111c31;
+    --panel-border: #26344e;
+    --muted: #7d8ca6;
+  }
+  body[data-theme="green"] {
+    --page-bg: #0d120e;
+    --dial-bg: #14231a;
+    --dial-edge: #2a3f31;
+    --ink: #e8efe6;
+    --hand: #e8efe6;
+    --badge-bg: #e8efe6;
+    --badge-text: #14231a;
+    --panel-bg: #16241b;
+    --panel-border: #2c4234;
+    --muted: #7e9384;
+  }
+
+  /* ---------- Gear button ---------- */
+  .gear {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.55;
+    transition: opacity 0.2s ease, transform 0.3s ease;
+    z-index: 10;
+  }
+  .gear:hover { opacity: 1; }
+  .gear.open { transform: rotate(45deg); opacity: 1; }
+  .gear svg { width: 26px; height: 26px; }
+
+  /* ---------- Clock ---------- */
+  .clock-wrap {
+    width: min(88vw, 520px);
+    margin-top: min(6vh, 48px);
+  }
+  .clock-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .dial-face { fill: var(--dial-bg); stroke: var(--dial-edge); stroke-width: 1.5; }
+  .hand-hour, .hand-minute { fill: var(--hand); }
+  .hand-hour { filter: drop-shadow(0 2px 2px rgba(0,0,0,0.35)); }
+  .hand-minute { filter: drop-shadow(0 2px 2px rgba(0,0,0,0.35)); }
+  .badge-circle { fill: var(--badge-bg); stroke: var(--accent); stroke-width: 1.5; }
+  .badge-text {
+    fill: var(--badge-text);
+    font-family: Didot, "Playfair Display", Georgia, serif;
+    font-weight: 600;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+  .second-hand { stroke: var(--accent); stroke-linecap: round; }
+  .second-tail { fill: var(--accent); }
+  .cap { fill: var(--accent); stroke: var(--dial-bg); stroke-width: 2; }
+  .track line { stroke: var(--muted); opacity: 0.5; }
+  .markers line { stroke: var(--hand); opacity: 0.85; }
+
+  /* ---------- Settings panel ---------- */
+  .panel {
+    width: min(88vw, 520px);
+    margin-top: 28px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 20px 22px 22px;
+    display: none;
+  }
+  .panel.open { display: block; }
+  .panel h2 {
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0;
+    border-top: 1px solid var(--panel-border);
+    font-size: 15px;
+  }
+  .field:first-of-type { border-top: none; }
+  .field label { color: var(--ink); }
+  .field select {
+    background: var(--dial-bg);
+    color: var(--ink);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .swatches { display: flex; gap: 8px; }
+  .swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+  }
+  .swatch.selected { border-color: var(--ink); transform: scale(1.1); }
+  .field input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+  .reset {
+    margin-top: 16px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--panel-border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .reset:hover { color: var(--ink); }
+  .note { margin-top: 12px; font-size: 12px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body data-theme="dark">
+
+<button class="gear" id="gearBtn" aria-label="Settings" aria-expanded="false" title="Settings">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+</button>
+
+<main class="clock-wrap" aria-label="Clock">
+  <svg viewBox="0 0 400 400" role="img" aria-label="Analogue clock">
+    <!-- Dial: deliberately clean, no numerals -->
+    <circle class="dial-face" cx="200" cy="200" r="188"></circle>
+    <g id="track" class="track" style="display:none"></g>
+    <g id="markers" class="markers" style="display:none"></g>
+
+    <!-- Hour hand: tapered, tip at r=100, badge at the tip -->
+    <g id="hourHand">
+      <polygon class="hand-hour" points="200,108 205,200 195,200"></polygon>
+      <g transform="translate(200,100)">
+        <g id="hourBadgeSpin">
+          <circle class="badge-circle" cx="0" cy="0" r="21"></circle>
+          <text class="badge-text" id="hourText" x="0" y="1" font-size="22">12</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Minute hand: tapered, tip at r=150, badge at the tip -->
+    <g id="minuteHand">
+      <polygon class="hand-minute" points="200,58 203.5,200 196.5,200"></polygon>
+      <g transform="translate(200,50)">
+        <g id="minuteBadgeSpin">
+          <circle class="badge-circle" cx="0" cy="0" r="21"></circle>
+          <text class="badge-text" id="minuteText" x="0" y="1" font-size="22">00</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Second hand: thin, smooth sweep, counterweight tail -->
+    <g id="secondHand">
+      <line class="second-hand" x1="200" y1="232" x2="200" y2="42" stroke-width="1.6"></line>
+      <circle class="second-tail" cx="200" cy="232" r="5"></circle>
+    </g>
+    <circle class="cap" cx="200" cy="200" r="7"></circle>
+  </svg>
+</main>
+
+<section class="panel" id="panel" aria-label="Watch settings">
+  <h2>Settings</h2>
+
+  <div class="field">
+    <label for="digitMode">Digits on hand tips</label>
+    <select id="digitMode">
+      <option value="upright">Stay upright</option>
+      <option value="rotating">Rotate with hand</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="theme">Look &amp; feel</label>
+    <select id="theme">
+      <option value="dark">Dark luxury</option>
+      <option value="light">Light minimal</option>
+      <option value="midnight">Midnight blue</option>
+      <option value="green">Deep green</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Second hand colour</label>
+    <div class="swatches" id="swatches" role="radiogroup" aria-label="Second hand colour">
+      <button type="button" class="swatch" data-accent="#c9a227" style="background:#c9a227" aria-label="Gold"></button>
+      <button type="button" class="swatch" data-accent="#d64545" style="background:#d64545" aria-label="Red"></button>
+      <button type="button" class="swatch" data-accent="#e07b39" style="background:#e07b39" aria-label="Orange"></button>
+      <button type="button" class="swatch" data-accent="#4a90d9" style="background:#4a90d9" aria-label="Blue"></button>
+      <button type="button" class="swatch" data-accent="#3f9d6e" style="background:#3f9d6e" aria-label="Green"></button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="secondMotion">Second hand motion</label>
+    <select id="secondMotion">
+      <option value="sweep">Smooth sweep</option>
+      <option value="tick">Step each second</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="showSecond">Show second hand</label>
+    <input type="checkbox" id="showSecond" checked>
+  </div>
+
+  <div class="field">
+    <label for="minuteTrack">Faint minute track</label>
+    <input type="checkbox" id="minuteTrack">
+  </div>
+
+  <div class="field">
+    <label for="markers">12 / 3 / 6 / 9 markers</label>
+    <input type="checkbox" id="markers">
+  </div>
+
+  <button type="button" class="reset" id="resetBtn">Reset to defaults</button>
+  <p class="note">Settings save automatically on this device.</p>
+</section>
+
+<script>
+(function () {
+  var STORAGE_KEY = "watchDesignSettings";
+  var defaults = {
+    digitMode: "upright",
+    theme: "dark",
+    accent: "#c9a227",
+    secondMotion: "sweep",
+    showSecond: true,
+    minuteTrack: false,
+    markers: false
+  };
+
+  function loadSettings() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      var out = {};
+      for (var k in defaults) out[k] = (saved[k] === undefined) ? defaults[k] : saved[k];
+      return out;
+    } catch (e) { return Object.assign({}, defaults); }
+  }
+  var settings = loadSettings();
+  function saveSettings() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch (e) {}
+  }
+
+  var hourHand = document.getElementById("hourHand");
+  var minuteHand = document.getElementById("minuteHand");
+  var secondHand = document.getElementById("secondHand");
+  var hourBadgeSpin = document.getElementById("hourBadgeSpin");
+  var minuteBadgeSpin = document.getElementById("minuteBadgeSpin");
+  var hourText = document.getElementById("hourText");
+  var minuteText = document.getElementById("minuteText");
+
+  /* Build the optional minute track (60 ticks) once. */
+  var track = document.getElementById("track");
+  for (var i = 0; i < 60; i++) {
+    var a = i * 6 * Math.PI / 180, major = i % 5 === 0;
+    var r1 = major ? 172 : 178, r2 = 184;
+    var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", 200 + r1 * Math.sin(a));
+    line.setAttribute("y1", 200 - r1 * Math.cos(a));
+    line.setAttribute("x2", 200 + r2 * Math.sin(a));
+    line.setAttribute("y2", 200 - r2 * Math.cos(a));
+    line.setAttribute("stroke-width", major ? 2 : 1);
+    track.appendChild(line);
+  }
+  /* Build optional 12/3/6/9 markers once. */
+  var markers = document.getElementById("markers");
+  [0, 90, 180, 270].forEach(function (deg) {
+    var a = deg * Math.PI / 180;
+    var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", 200 + 168 * Math.sin(a));
+    line.setAttribute("y1", 200 - 168 * Math.cos(a));
+    line.setAttribute("x2", 200 + 184 * Math.sin(a));
+    line.setAttribute("y2", 200 - 184 * Math.cos(a));
+    line.setAttribute("stroke-width", 3);
+    markers.appendChild(line);
+  });
+
+  function applySettings() {
+    document.body.setAttribute("data-theme", settings.theme);
+    document.documentElement.style.setProperty("--accent", settings.accent);
+    secondHand.style.display = settings.showSecond ? "" : "none";
+    track.style.display = settings.minuteTrack ? "" : "none";
+    markers.style.display = settings.markers ? "" : "none";
+    document.querySelectorAll(".swatch").forEach(function (b) {
+      b.classList.toggle("selected", b.getAttribute("data-accent") === settings.accent);
+    });
+  }
+
+  function tick() {
+    var now = new Date();
+    var ms = now.getMilliseconds();
+    var s = now.getSeconds();
+    var m = now.getMinutes();
+    var h = now.getHours() % 12 || 12;
+
+    var hourAngle = ((now.getHours() % 12) + m / 60 + s / 3600) * 30;
+    var minuteAngle = (m + s / 60 + ms / 60000) * 6;
+    var secondAngle = settings.secondMotion === "sweep"
+      ? (s + ms / 1000) * 6
+      : s * 6;
+
+    hourHand.setAttribute("transform", "rotate(" + hourAngle + " 200 200)");
+    minuteHand.setAttribute("transform", "rotate(" + minuteAngle + " 200 200)");
+    secondHand.setAttribute("transform", "rotate(" + secondAngle + " 200 200)");
+
+    /* Counter-rotate the badges so digits stay upright (or let them ride along). */
+    var spin = settings.digitMode === "upright";
+    hourBadgeSpin.setAttribute("transform", spin ? "rotate(" + (-hourAngle) + ")" : "");
+    minuteBadgeSpin.setAttribute("transform", spin ? "rotate(" + (-minuteAngle) + ")" : "");
+
+    hourText.textContent = h;
+    minuteText.textContent = (m < 10 ? "0" : "") + m;
+
+    requestAnimationFrame(tick);
+  }
+
+  /* ---- Settings panel wiring ---- */
+  var gearBtn = document.getElementById("gearBtn");
+  var panel = document.getElementById("panel");
+  gearBtn.addEventListener("click", function () {
+    var open = panel.classList.toggle("open");
+    gearBtn.classList.toggle("open", open);
+    gearBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  var digitModeEl = document.getElementById("digitMode");
+  var themeEl = document.getElementById("theme");
+  var secondMotionEl = document.getElementById("secondMotion");
+  var showSecondEl = document.getElementById("showSecond");
+  var minuteTrackEl = document.getElementById("minuteTrack");
+  var markersEl = document.getElementById("markers");
+
+  function syncControls() {
+    digitModeEl.value = settings.digitMode;
+    themeEl.value = settings.theme;
+    secondMotionEl.value = settings.secondMotion;
+    showSecondEl.checked = settings.showSecond;
+    minuteTrackEl.checked = settings.minuteTrack;
+    markersEl.checked = settings.markers;
+  }
+  function changed() { applySettings(); saveSettings(); }
+
+  digitModeEl.addEventListener("change", function () { settings.digitMode = digitModeEl.value; changed(); });
+  themeEl.addEventListener("change", function () { settings.theme = themeEl.value; changed(); });
+  secondMotionEl.addEventListener("change", function () { settings.secondMotion = secondMotionEl.value; changed(); });
+  showSecondEl.addEventListener("change", function () { settings.showSecond = showSecondEl.checked; changed(); });
+  minuteTrackEl.addEventListener("change", function () { settings.minuteTrack = minuteTrackEl.checked; changed(); });
+  markersEl.addEventListener("change", function () { settings.markers = markersEl.checked; changed(); });
+  document.querySelectorAll(".swatch").forEach(function (b) {
+    b.addEventListener("click", function () { settings.accent = b.getAttribute("data-accent"); changed(); });
+  });
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    settings = Object.assign({}, defaults);
+    syncControls();
+    changed();
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  });
+
+  syncControls();
+  applySettings();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
